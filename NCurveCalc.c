@@ -37,6 +37,13 @@ void invalidInput()
     getLn();
 }
 
+void anyKey()
+{
+    printw("@Press any key to continue:\n");
+    refresh();
+    getLn();
+}
+
 /* Clears curses screens */
 void clrscr()
 {
@@ -220,13 +227,19 @@ void optionB(List *list)
 {
     char userInput;
     bool continueLoop = true;
+    int loopVar;
+    double length;
+    Node *node;
+    Node *node_now;
+    Point *loopPoint;
+    Point *loopPointNext;
+    node = list->head_node;
     while (continueLoop)
     {
         clrscr();
         printw("@Analyze Points menu:\n");
         printw("\tA - Display points\n");
-        printw("\tB - Shift points\n");
-        printw("\tC - Point statistics\n");
+        printw("\tB - Point statistics\n");
         printw("\tX - Main menu:\n");
         printw("\tSelection: ");
         refresh();
@@ -234,10 +247,47 @@ void optionB(List *list)
         switch (userInput)
         {
             case 'A':
-                continueLoop = false;
+                clrscr();
+                loopVar = 0;
+                node = list->head_node;
+                if (list != NULL && list->size > 0)
+                {
+                    while (node != NULL)
+                    {
+                        node_now = node;
+                        node = node_GetNext(node);
+                        loopPoint = node_now->data;
+                        loopVar++;
+                        clrscr();
+                        printw("@Point %i of %i:\n", loopVar, list->size);
+                        printw("\tx: %lf\n\ty: %lf\n", loopPoint->x, loopPoint->y);
+                        anyKey();
+                    }
+                }
                 break;
             case 'B':
-                continueLoop = false;
+                length = 0;
+                node = list->head_node;
+                if (list->size > 0)
+                {
+                    if (list != NULL && list->size > 0)
+                    {
+                        while (node != NULL)
+                        {
+                            node_now = node;
+                            node = node_GetNext(node);
+                            loopPoint = node_now->data;
+                            if (node != NULL)
+                            {
+                                loopPointNext = node->data;
+                                length += calcPointLength(loopPoint, loopPointNext);
+                            }
+                        }
+                    }
+                }
+                printw("@Point statistics:\n");
+                printw("\tLength of points: %lf\n", length);
+                anyKey();
                 break;
             case 'X':
                 continueLoop = false;
@@ -335,8 +385,10 @@ bool optionAFile(List *list)
 bool optionAInput(List *list)
 {
     char userInput;
+    Node *lastNode;
     Point *newPoint;
-    double x, y;
+    Point *lastPoint;
+    double x, y, lastX;
     bool isModified = false;
     bool continueLoop = true;
     while (continueLoop)
@@ -351,14 +403,30 @@ bool optionAInput(List *list)
         {
             case 'Y':
                 isModified = true;
+                lastNode = list->tail_node;
+                if (lastNode != NULL)
+                {
+                    lastPoint = lastNode->data;
+                    lastX = lastPoint->x;
+                }
                 printw("\tX: ");
                 refresh();
                 scanw(" %lf", &x);
-                printw("\tY: ");
-                refresh();
-                scanw(" %lf", &y);
-                newPoint = mkPoint(x, y);
-                list_Append(list, newPoint);
+                if (lastNode != NULL && x <= lastX)
+                {
+                    printw("@Value must be greater than %lf!\n", lastX);
+                    anyKey();
+                }
+                else
+                {
+                    printw("\tY: ");
+                    refresh();
+                    scanw(" %lf", &y);
+                    newPoint = mkPoint(x, y);
+                    list_Append(list, newPoint);
+                    if (lastNode != NULL)
+                        rmPoint(lastPoint);
+                }
                 break;
             case 'N':
                 continueLoop = false;
