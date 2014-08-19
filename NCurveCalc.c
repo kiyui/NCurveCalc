@@ -242,7 +242,11 @@ int main()
         clrscr();
     }
     /* Free memory */
+    clearCurve(curve);
     rmList(curve->list);
+    rmPoint(curve->lowPoint);
+    rmPoint(curve->highPoint);
+    free(curve);
     /* End curses screen */
     endwin();
     /* Return to operating system */
@@ -261,6 +265,7 @@ bool optionA(Curve *curve, bool isModified)
         printw("@Coordinate load menu:\n");
         printw("\tA - Load from file\n");
         printw("\tB - Load from input\n");
+        printw("\tC - Clear points\n");
         printw("\tX - Main menu:\n");
         printw("\tSelection: ");
         refresh();
@@ -272,6 +277,9 @@ bool optionA(Curve *curve, bool isModified)
                 break;
             case 'B':
                 isModified = optionAInput(curve);
+                break;
+            case 'C':
+                clearCurve(curve);
                 break;
             case 'X':
                 continueLoop = false;
@@ -384,6 +392,64 @@ bool optionC(Curve *curve, bool isModified)
 
 bool optionD(Curve *curve)
 {
+    char userInput;
+    bool continueLoop = true;
+    char *inputFileName = (char *) malloc(64 * sizeof(char));
+    bool isSaved = false;
+    Node *node;
+    Node *node_now;
+    Point *loopPoint;
+    FILE *outputFile;
+    while (continueLoop)
+    {
+        clrscr();
+        coordinatesLoaded(curve->list);
+        printw("@Save changes:\n");
+        printw("\tA - Save to file\n");
+        printw("\tX - Main menu:\n");
+        printw("\tSelection: ");
+        refresh();
+        userInput = getLn();
+        switch (userInput)
+        {
+            case 'A':
+                printw("\tPlease input file name: ");
+                scanw(" %s", inputFileName);
+                if (fileExists(inputFileName))
+                {
+                    printw("@File exists!\n");
+                    refresh();
+                    getLn();
+                }
+                else
+                {
+                    outputFile = fopen(inputFileName, "w");
+                    node = curve->list->head_node;
+                    if (curve->list != NULL && curve->list->size > 0)
+                    {
+                        loopPoint = node->data;
+                        while (node != NULL)
+                        {
+                            node_now = node;
+                            node = node_GetNext(node);
+                            loopPoint = node_now->data;
+                            fprintf(outputFile, "%lf %lf\n", loopPoint->x, loopPoint->y);
+                        }
+                    }
+                    fclose(outputFile);
+                    isSaved = true;
+                    printw("File save complete.\n");
+                    anyKey();
+                }
+                break;
+            case 'X':
+                continueLoop = false;
+                break;
+            default:
+                invalidInput();
+        }
+    }
+    return !isSaved;
 }
 
 bool optionX(bool isModified)
@@ -425,10 +491,12 @@ bool optionAFile(Curve *curve)
     Node *lastNode;
     Point *newPoint;
     Point *lastPoint;
-    double x, y;
+    double x, y, sequence;
     bool isModified = false;
     bool continueLoop = true;
     char *inputFileName = (char *) malloc(64 * sizeof(char));
+    bool gotDirection = false;
+    bool typeDirection; /*True: Smaller False: Larger*/
     FILE *inputFile;
     clrscr();
     if (curve->list->size > 0)
@@ -461,15 +529,36 @@ bool optionAFile(Curve *curve)
         if (lastNode != NULL)
         {
             lastPoint = lastNode->data;
-            if (x <= lastPoint->x)
+            if (!gotDirection)
             {
-                printw("\t@X Value must be greater than %lf!\n\tPlease fix your file!\n");
+                gotDirection = true;
+                if (x <= lastPoint->x)
+                    typeDirection = true;
+                else
+                    typeDirection = false;
+            }
+            if (x <= lastPoint->x && typeDirection)
+            {
+                newPoint = mkPoint(x, y);
+                list_Append(curve->list, newPoint);
+            }
+            else if (x >= lastPoint->x && !typeDirection)
+            {
+                newPoint = mkPoint(x, y);
+                list_Append(curve->list, newPoint);
+            }
+            else
+            {
+                printw("\t@Values must be sequential!\n\tPlease fix your file!\n");
                 anyKey();
                 return isModified;
             }
         }
-        newPoint = mkPoint(x, y);
-        list_Append(curve->list, newPoint);
+        else
+        {
+            newPoint = mkPoint(x, y);
+            list_Append(curve->list, newPoint);
+        }
     }
     return isModified;
 }
@@ -480,9 +569,12 @@ bool optionAInput(Curve *curve)
     Node *lastNode;
     Point *newPoint;
     Point *lastPoint;
+    Point *headPoint;
+    Point *tailPoint;
     double x, y, lastX;
     bool isModified = false;
     bool continueLoop = true;
+    bool typeDirection; /*True: Smaller False: Larger*/
     while (continueLoop)
     {
         clrscr();
@@ -500,14 +592,39 @@ bool optionAInput(Curve *curve)
                 {
                     lastPoint = lastNode->data;
                     lastX = lastPoint->x;
+                    headPoint = curve->list->head_node->data;
+                    tailPoint = curve->list->tail_node->data;
+                    if (headPoint->x > tailPoint->x)
+                        typeDirection = true;
+                    else
+                        typeDirection = false;
                 }
                 printw("\tX: ");
                 refresh();
                 scanw(" %lf", &x);
-                if (lastNode != NULL && x <= lastX)
+                if (lastNode != NULL)
                 {
-                    printw("\t@Value must be greater than %lf!\n", lastX);
-                    anyKey();
+                    if (x < lastX && typeDirection)
+                    {
+                        printw("\tY: ");
+                        refresh();
+                        scanw(" %lf", &y);
+                        newPoint = mkPoint(x, y);
+                        list_Append(curve->list, newPoint);
+                    }
+                    else if (x > lastX && !typeDirection)
+                    {
+                        printw("\tY: ");
+                        refresh();
+                        scanw(" %lf", &y);
+                        newPoint = mkPoint(x, y);
+                        list_Append(curve->list, newPoint);
+                    }
+                    else
+                    {
+                        printw("\t@Values must be sequential!\n");
+                        anyKey();
+                    }
                 }
                 else
                 {
