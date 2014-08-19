@@ -1,5 +1,6 @@
 #include "point.h"
 #include "clist.h"
+#include "curve.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -10,18 +11,19 @@
 #include <sys/stat.h>
 #define putLn() (printw("\n"));
 
+/* A structure to maintain program state */
 typedef struct
 {
-    /* True if List contains Points */
-    bool isLoaded;
     /* True if there are unsaved changes */
     bool isModified;
-    /* Truw if program is running */
+    /* True if program is running */
     bool isRunning;
 }ProgramStatus;
 
 /* region: General functions */
-/* getch() + toupper() + putLn() */
+
+/* @brief Gets character, switches it to upper-case and inputs a new line
+ * */
 char getLn()
 {
     char inChar = getch();
@@ -30,28 +32,41 @@ char getLn()
     return inChar;
 }
 
-/* Invalid Input Screen */
+/* @brief Invalid Input Screen
+ * */
 void invalidInput()
 {
-    printw("@Invalid input! - Press any key to continue.");
-    getLn();
-}
-
-void anyKey()
-{
-    printw("@Press any key to continue:\n");
+    printw("\n@Invalid input! - Press any key to continue.\n");
     refresh();
     getLn();
 }
 
-/* Clears curses screens */
+/* @brief Press any key to continue screen
+ * */
+void anyKey()
+{
+    printw("\n@Press any key to continue:\n");
+    refresh();
+    getLn();
+}
+
+void loadCurve()
+{
+    printw("\n@Please load coordinates before you continue.");
+    anyKey();
+}
+
+/* @brief Clears curses screen & refreshes 
+ * */
 void clrscr()
 {
     clear();
     refresh();
 }
 
-/* Shows number of loaded coordinates */
+/* @brief Shows number of loaded coordinates
+ * @param *list target List
+ * */
 void coordinatesLoaded(List *list)
 {
     if (list->size == 0)
@@ -63,14 +78,16 @@ void coordinatesLoaded(List *list)
     refresh();
 }
 
-/* Clear list of Points */
-void clearList(List *list)
+/* @brief Clear list of Points 
+ * @param *list Target list
+ * */
+void clearCurve(Curve *curve)
 {
     Node *node;
     Node *node_now;
     Point *loopPoint;
-    node = list->head_node;
-    if (list != NULL && list->size > 0)
+    node = curve->list->head_node;
+    if (curve->list != NULL && curve->list->size > 0)
     {
         while (node != NULL)
         {
@@ -80,11 +97,14 @@ void clearList(List *list)
             rmPoint(loopPoint);
         }
     }
-    rmList(list);
-    list = mkList();
+    rmList(curve->list);
+    curve->list = mkList();
 }
 
-/* Test if file exists */
+/* @brief Test if file exists 
+ * @param *inputFileName String of input file name
+ * @return File exist boolean
+ * */
 bool fileExists(char *inputFileName)
 {
     int exists;
@@ -98,7 +118,11 @@ bool fileExists(char *inputFileName)
     return exists >= 0;
 }
 
-/* Displays the Welcome Screen */
+/* @brief Displays the Welcome Screen 
+ * @param *list Target List
+ * @param *userInput Last input character
+ * @param *isModified Boolean, are there unsaved changes
+ * */
 void welcomescr(List *list, char userInput, bool isModified)
 {
     printw("################################\n");
@@ -119,29 +143,58 @@ void welcomescr(List *list, char userInput, bool isModified)
 /* endregion */
 
 /* region: Function prototypes */
-/* Loads coordinates either from a file or from user input */
-bool optionA(List *list, bool *isPModified);
-bool optionAFile(List *list);
-bool optionAInput(List *list);
 
-/* Analyzes loaded coordinates */
-void optionB(List *list);
+/* @brief Loads coordinates either from a file or from user input 
+ * @param *list Target List
+ * @param isModified Boolean isModified value
+ * @return Returns true if changes are made
+ */
+bool optionA(Curve *curve, bool isModified);
 
-/* Modifies loaded coordinates */
-bool optionC(List *list, bool *isPModified);
+/* @brief Main menu option A submenu for loading Points from a file
+ * @param *list Target List
+ * @return Returns true if changes are made
+ */
+bool optionAFile(Curve *curve);
 
-/* Saves changes */
-bool optionD(List *list);
+/* @brief Main menu option A submenu for loading Points from user input
+ * @param *list Target List
+ * @return Returns true if changes are made
+ */
+bool optionAInput(Curve *curve);
 
-/* Exit program */
-bool optionX(List *list, bool isModified);
+/* @brief Analyzes loaded coordinates 
+ * @param *list Target List
+ */
+void optionB(Curve *curve);
+
+/* @brief Modifies loaded coordinates
+ * @param *list Target List
+ * @param isModified Boolean isModified value 
+ * @return Returns true if changes are made
+ */
+bool optionC(Curve *curve, bool isModified);
+
+/* @brief Saves changes
+ * @param *list Target List
+ * @return Returns true if changes are made
+ */
+bool optionD(Curve *curve);
+
+/* @brief Exit program
+ * @param *list Target List
+ * @param isModified Boolean isModified value
+ * @return Returns program exit status
+ */
+bool optionX(bool isModified);
 /* endregion */
 
 int main()
 {
     ProgramStatus thisProgram;
     char userInput = ' ';
-    List *list = mkList();
+    Curve *curve = (Curve *) malloc(sizeof(Curve));
+    curve->list = mkList();
     /* Clear terminal screen before initializing curses */
     #ifdef _WIN32
         system("cls");
@@ -151,30 +204,37 @@ int main()
     /* Initialize curses screen */
     initscr();
     thisProgram.isRunning = true;
-    thisProgram.isLoaded = false;
     thisProgram.isModified = false;
     while (thisProgram.isRunning)
     {
-        thisProgram.isLoaded = list->size > 0;
-        welcomescr(list, userInput, thisProgram.isModified);
+        welcomescr(curve->list, userInput, thisProgram.isModified);
         userInput = getLn();
         clrscr();
         switch(userInput)
         {
             case 'A':
-                thisProgram.isModified = optionA(list, &thisProgram.isModified);
+                thisProgram.isModified = optionA(curve, thisProgram.isModified);
                 break;
             case 'B':
-                optionB(list);
+                if (curve->list->size > 0)
+                    optionB(curve);
+                else
+                    loadCurve();
                 break;
             case 'C':
-                thisProgram.isModified = optionC(list, &thisProgram.isModified);
+                if (curve->list->size > 0)
+                    thisProgram.isModified = optionC(curve, thisProgram.isModified);
+                else
+                    loadCurve();
                 break;
             case 'D':
-                thisProgram.isModified = optionD(list);
+                if (curve->list->size > 0)
+                    thisProgram.isModified = optionD(curve);
+                else
+                    loadCurve();
                 break;
             case 'X':
-                thisProgram.isRunning = optionX(list, thisProgram.isModified);
+                thisProgram.isRunning = optionX(thisProgram.isModified);
                 break;
             default:
                 invalidInput();
@@ -182,7 +242,7 @@ int main()
         clrscr();
     }
     /* Free memory */
-    rmList(list);
+    rmList(curve->list);
     /* End curses screen */
     endwin();
     /* Return to operating system */
@@ -190,14 +250,14 @@ int main()
 }
 
 /* region: Function definitions */
-bool optionA(List *list, bool *isPModified)
+bool optionA(Curve *curve, bool isModified)
 {
     char userInput;
-    bool isModified = *isPModified;
     bool continueLoop = true;
     while (continueLoop)
     {
         clrscr();
+        coordinatesLoaded(curve->list);
         printw("@Coordinate load menu:\n");
         printw("\tA - Load from file\n");
         printw("\tB - Load from input\n");
@@ -208,10 +268,10 @@ bool optionA(List *list, bool *isPModified)
         switch (userInput)
         {
             case 'A':
-                isModified = optionAFile(list);
+                isModified = optionAFile(curve);
                 break;
             case 'B':
-                isModified = optionAInput(list);
+                isModified = optionAInput(curve);
                 break;
             case 'X':
                 continueLoop = false;
@@ -220,10 +280,12 @@ bool optionA(List *list, bool *isPModified)
                 invalidInput();
         }
     }
+    if (isModified)
+        initCurve(curve);
     return isModified;
 }
 
-void optionB(List *list)
+void optionB(Curve *curve)
 {
     char userInput;
     bool continueLoop = true;
@@ -233,10 +295,10 @@ void optionB(List *list)
     Node *node_now;
     Point *loopPoint;
     Point *loopPointNext;
-    node = list->head_node;
     while (continueLoop)
     {
         clrscr();
+        coordinatesLoaded(curve->list);
         printw("@Analyze Points menu:\n");
         printw("\tA - Display points\n");
         printw("\tB - Point statistics\n");
@@ -249,8 +311,8 @@ void optionB(List *list)
             case 'A':
                 clrscr();
                 loopVar = 0;
-                node = list->head_node;
-                if (list != NULL && list->size > 0)
+                node = curve->list->head_node;
+                if (curve->list != NULL && curve->list->size > 0)
                 {
                     while (node != NULL)
                     {
@@ -259,34 +321,18 @@ void optionB(List *list)
                         loopPoint = node_now->data;
                         loopVar++;
                         clrscr();
-                        printw("@Point %i of %i:\n", loopVar, list->size);
+                        printw("@Point %i of %i:\n", loopVar, curve->list->size);
                         printw("\tx: %lf\n\ty: %lf\n", loopPoint->x, loopPoint->y);
                         anyKey();
                     }
                 }
                 break;
             case 'B':
-                length = 0;
-                node = list->head_node;
-                if (list->size > 0)
-                {
-                    if (list != NULL && list->size > 0)
-                    {
-                        while (node != NULL)
-                        {
-                            node_now = node;
-                            node = node_GetNext(node);
-                            loopPoint = node_now->data;
-                            if (node != NULL)
-                            {
-                                loopPointNext = node->data;
-                                length += calcPointLength(loopPoint, loopPointNext);
-                            }
-                        }
-                    }
-                }
                 printw("@Point statistics:\n");
-                printw("\tLength of points: %lf\n", length);
+                printw("\tLength of points: %lf\n", curve->length);
+                printw("\tArea under the curve: %lf\n", curve->area);
+                printw("\tLowest point: X: %lf Y: %lf\n", curve->lowPoint->x, curve->lowPoint->y);
+                printw("\tHighest point: X: %lf Y: %lf\n", curve->highPoint->x, curve->highPoint->y);
                 anyKey();
                 break;
             case 'X':
@@ -299,15 +345,48 @@ void optionB(List *list)
     }
 }
 
-bool optionC(List *list, bool *isPModified)
+bool optionC(Curve *curve, bool isModified)
+{
+    char userInput;
+    bool continueLoop = true;
+    double shiftX, shiftY;
+    while (continueLoop)
+    {
+        clrscr();
+        coordinatesLoaded(curve->list);
+        printw("@Modify Points menu:\n");
+        printw("\tA - Shift Points\n");
+        printw("\tX - Main menu:\n");
+        printw("\tSelection: ");
+        refresh();
+        userInput = getLn();
+        switch (userInput)
+        {
+            case 'A':
+                printw("@Shift Points:\n");
+                printw("\tX: ");
+                refresh();
+                scanw(" %lf", &shiftX);
+                printw("\tY: ");
+                refresh();
+                scanw(" %lf", &shiftY);
+                mvCurve(curve, shiftX, shiftY);
+                initCurve(curve);
+                break;
+            case 'X':
+                continueLoop = false;
+                break;
+            default:
+                invalidInput();
+        }
+    }
+}
+
+bool optionD(Curve *curve)
 {
 }
 
-bool optionD(List *list)
-{
-}
-
-bool optionX(List *list, bool isModified)
+bool optionX(bool isModified)
 {
     char userInput;
     bool isRunning;
@@ -340,17 +419,19 @@ bool optionX(List *list, bool isModified)
     return isRunning;
 }
 
-bool optionAFile(List *list)
+bool optionAFile(Curve *curve)
 {
     char userInput;
+    Node *lastNode;
     Point *newPoint;
+    Point *lastPoint;
     double x, y;
     bool isModified = false;
     bool continueLoop = true;
     char *inputFileName = (char *) malloc(64 * sizeof(char));
     FILE *inputFile;
     clrscr();
-    if (list->size > 0)
+    if (curve->list->size > 0)
     {
         printw("@Your previous coordinates will be removed, continue? (y/n)\n");
         printw("\tSelection: ");
@@ -359,7 +440,7 @@ bool optionAFile(List *list)
         if (userInput == 'N')
             return isModified;
         else
-            clearList(list);
+            clearCurve(curve);
     }
     printw("@Please input file name: ");
     refresh();
@@ -376,13 +457,24 @@ bool optionAFile(List *list)
         isModified = true;
     while (fscanf(inputFile, "%lf %lf", &x, &y) == 2)
     {
+        lastNode = curve->list->tail_node;
+        if (lastNode != NULL)
+        {
+            lastPoint = lastNode->data;
+            if (x <= lastPoint->x)
+            {
+                printw("\t@X Value must be greater than %lf!\n\tPlease fix your file!\n");
+                anyKey();
+                return isModified;
+            }
+        }
         newPoint = mkPoint(x, y);
-        list_Append(list, newPoint);
+        list_Append(curve->list, newPoint);
     }
     return isModified;
 }
 
-bool optionAInput(List *list)
+bool optionAInput(Curve *curve)
 {
     char userInput;
     Node *lastNode;
@@ -394,7 +486,7 @@ bool optionAInput(List *list)
     while (continueLoop)
     {
         clrscr();
-        coordinatesLoaded(list);
+        coordinatesLoaded(curve->list);
         printw("\tAdd coordinate? (y/n)\n");
         printw("\tSelection: ");
         refresh();
@@ -403,7 +495,7 @@ bool optionAInput(List *list)
         {
             case 'Y':
                 isModified = true;
-                lastNode = list->tail_node;
+                lastNode = curve->list->tail_node;
                 if (lastNode != NULL)
                 {
                     lastPoint = lastNode->data;
@@ -414,7 +506,7 @@ bool optionAInput(List *list)
                 scanw(" %lf", &x);
                 if (lastNode != NULL && x <= lastX)
                 {
-                    printw("@Value must be greater than %lf!\n", lastX);
+                    printw("\t@Value must be greater than %lf!\n", lastX);
                     anyKey();
                 }
                 else
@@ -423,9 +515,7 @@ bool optionAInput(List *list)
                     refresh();
                     scanw(" %lf", &y);
                     newPoint = mkPoint(x, y);
-                    list_Append(list, newPoint);
-                    if (lastNode != NULL)
-                        rmPoint(lastPoint);
+                    list_Append(curve->list, newPoint);
                 }
                 break;
             case 'N':

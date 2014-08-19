@@ -31,3 +31,10 @@ double calcPointLength(Point *point1, Point *point2)
     length = sqrt(pow(point1->x - point2->x, 2) + pow(point1->y - point2->y, 2));
     return length;
 }
+
+double calcPointArea(Point *point1, Point *point2)
+{
+    double area;
+    area = abs(point2->x - point1->x) * ((abs(point1->y) + abs(point2->y))/2);
+    return area;
+}
