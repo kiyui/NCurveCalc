@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -lm -lncurses
+CFLAGS = -std=c99 -lm -lncurses -g
 TARGET = NCurveCalc
 OBJECTS = $(TARGET).o clist.o point.o curve.o
 

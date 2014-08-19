@@ -1,3 +1,19 @@
+/* *NCurveCalc: A simple curve calculator
+ *  * Copyright (C) 2014 Timothy Kiyui, 4316886
+ *   * 
+ *    * This program is free software: you can redistribute it and/or modify
+ *     * it under the terms of the GNU General Public License as published by
+ *      * the Free Software Foundation, either version 3 of the License, or
+ *       * (at your option) any later version.
+ *        * 
+ *         * This program is distributed in the hope that it will be useful,
+ *          * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *           * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *            * GNU General Public License for more details.
+ *             * 
+ *              * You should have received a copy of the GNU General Public License
+ *               * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *                * */
 #include "point.h"
 #include "clist.h"
 #include "curve.h"
@@ -50,6 +66,8 @@ void anyKey()
     getLn();
 }
 
+/* @brief Prompts the user to load coordinates
+ * */
 void loadCurve()
 {
     printw("\n@Please load coordinates before you continue.");
@@ -65,7 +83,7 @@ void clrscr()
 }
 
 /* @brief Shows number of loaded coordinates
- * @param *list target List
+ * @param *list Target List
  * */
 void coordinatesLoaded(List *list)
 {
@@ -79,7 +97,7 @@ void coordinatesLoaded(List *list)
 }
 
 /* @brief Clear list of Points 
- * @param *list Target list
+ * @param *curve Target Curve
  * */
 void clearCurve(Curve *curve)
 {
@@ -95,6 +113,7 @@ void clearCurve(Curve *curve)
             node = node_GetNext(node);
             loopPoint = node_now->data;
             rmPoint(loopPoint);
+            rmNode(node_now);
         }
     }
     rmList(curve->list);
@@ -119,7 +138,7 @@ bool fileExists(char *inputFileName)
 }
 
 /* @brief Displays the Welcome Screen 
- * @param *list Target List
+ * @param *curve Target Curve
  * @param *userInput Last input character
  * @param *isModified Boolean, are there unsaved changes
  * */
@@ -145,44 +164,43 @@ void welcomescr(List *list, char userInput, bool isModified)
 /* region: Function prototypes */
 
 /* @brief Loads coordinates either from a file or from user input 
- * @param *list Target List
+ * @param *curve Target Curve
  * @param isModified Boolean isModified value
  * @return Returns true if changes are made
  */
 bool optionA(Curve *curve, bool isModified);
 
 /* @brief Main menu option A submenu for loading Points from a file
- * @param *list Target List
+ * @param *curve Target Curve
  * @return Returns true if changes are made
  */
 bool optionAFile(Curve *curve);
 
 /* @brief Main menu option A submenu for loading Points from user input
- * @param *list Target List
+ * @param *curve Target Curve
  * @return Returns true if changes are made
  */
 bool optionAInput(Curve *curve);
 
 /* @brief Analyzes loaded coordinates 
- * @param *list Target List
+ * @param *curve Target Curve
  */
 void optionB(Curve *curve);
 
 /* @brief Modifies loaded coordinates
- * @param *list Target List
+ * @param *curve Target Curve
  * @param isModified Boolean isModified value 
  * @return Returns true if changes are made
  */
 bool optionC(Curve *curve, bool isModified);
 
 /* @brief Saves changes
- * @param *list Target List
+ * @param *curve Target Curve
  * @return Returns true if changes are made
  */
 bool optionD(Curve *curve);
 
 /* @brief Exit program
- * @param *list Target List
  * @param isModified Boolean isModified value
  * @return Returns program exit status
  */
@@ -449,6 +467,7 @@ bool optionD(Curve *curve)
                 invalidInput();
         }
     }
+    free(inputFileName);
     return !isSaved;
 }
 
@@ -560,6 +579,8 @@ bool optionAFile(Curve *curve)
             list_Append(curve->list, newPoint);
         }
     }
+    fclose(inputFile);
+    free(inputFileName);
     return isModified;
 }
 
@@ -596,7 +617,7 @@ bool optionAInput(Curve *curve)
                     tailPoint = curve->list->tail_node->data;
                     if (headPoint->x > tailPoint->x)
                         typeDirection = true;
-                    else
+                    else if (headPoint->x < tailPoint->x)
                         typeDirection = false;
                 }
                 printw("\tX: ");

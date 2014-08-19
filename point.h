@@ -31,5 +31,10 @@ void shiftPoint(Point *point, double x, double y);
  * */
 double calcPointLength(Point *point1, Point *point2);
 
+/* @brief Calculates the area under the curve between two Points
+ * @param *point1 First target Point
+ * @param *point2 Second target Point
+ * @return Area under curve between *point1 & *point2
+ * */
 double calcPointArea(Point *point1, Point *point);
 #endif
