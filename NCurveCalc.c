@@ -116,7 +116,6 @@ void clearCurve(Curve *curve)
             rmNode(node_now);
         }
     }
-    rmList(curve->list);
     curve->list = mkList();
 }
 
@@ -261,9 +260,6 @@ int main()
     }
     /* Free memory */
     clearCurve(curve);
-    rmList(curve->list);
-    rmPoint(curve->lowPoint);
-    rmPoint(curve->highPoint);
     free(curve);
     /* End curses screen */
     endwin();
